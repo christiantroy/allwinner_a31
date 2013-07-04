@@ -1,0 +1,25 @@
+From d2f7090ab64fea902943dd9f36ca728250a28dd6 Mon Sep 17 00:00:00 2001
+From: Alan Marchesan <justcavalli@gmail.com>
+Date: Mon, 18 Feb 2013 17:12:12 +0100
+Subject: [PATCH] Set default WiFi idle timeout to 30ms
+
+---
+ services/java/com/android/server/WifiService.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/services/java/com/android/server/WifiService.java b/services/java/com/android/server/WifiService.java
+index 84efe65..d3ab326 100644
+--- a/services/java/com/android/server/WifiService.java
++++ b/services/java/com/android/server/WifiService.java
+@@ -143,7 +143,7 @@ public class WifiService extends IWifiManager.Stub {
+      * being enabled but not active exceeds the battery drain caused by
+      * re-establishing a connection to the mobile data network.
+      */
+-    private static final long DEFAULT_IDLE_MS = 15 * 60 * 1000; /* 15 minutes */
++    private static final long DEFAULT_IDLE_MS = 1 * 30 * 1000; /* 30 seconds */
+ 
+     private static final String ACTION_DEVICE_IDLE =
+             "com.android.server.WifiManager.action.DEVICE_IDLE";
+-- 
+1.8.1.5
+

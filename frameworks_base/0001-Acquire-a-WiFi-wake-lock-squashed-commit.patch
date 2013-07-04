@@ -1,0 +1,222 @@
+From 14596efe972066ce86b6c471218c10f0a53e6cbd Mon Sep 17 00:00:00 2001
+From: Alan Marchesan <justcavalli@gmail.com>
+Date: Fri, 31 May 2013 07:50:51 +0200
+Subject: [PATCH] Acquire a WiFi wake lock (squashed commit)
+
+---
+ services/java/com/android/server/WifiService.java |  8 ++-
+ wifi/java/android/net/wifi/WifiStateMachine.java  | 85 +++++++++++++++++++++--
+ 2 files changed, 85 insertions(+), 8 deletions(-)
+
+diff --git a/services/java/com/android/server/WifiService.java b/services/java/com/android/server/WifiService.java
+index d3ab326..393f58d 100644
+--- a/services/java/com/android/server/WifiService.java
++++ b/services/java/com/android/server/WifiService.java
+@@ -1058,6 +1058,8 @@ public class WifiService extends IWifiManager.Stub {
+                     Slog.d(TAG, "ACTION_SCREEN_ON");
+                 }
+                 mAlarmManager.cancel(mIdleIntent);
++		mWifiStateMachine.releaseShutdownLock();
++		mWifiStateMachine.releaseSodLock();
+                 mScreenOff = false;
+                 evaluateTrafficStatsPolling();
+                 setDeviceIdleAndUpdateWifi(false);
+@@ -1074,14 +1076,18 @@ public class WifiService extends IWifiManager.Stub {
+                  * or plugged in to AC).
+                  */
+                 if (!shouldWifiStayAwake(stayAwakeConditions, mPluggedType)) {
++		    mWifiStateMachine.acquireShutdownLock();
+                     //Delayed shutdown if wifi is connected
+-                    if (mNetworkInfo.getDetailedState() == DetailedState.CONNECTED) {
++                    //if (mNetworkInfo.getDetailedState() == DetailedState.CONNECTED) {
++		    if (true) {
+                         if (DBG) Slog.d(TAG, "setting ACTION_DEVICE_IDLE: " + idleMillis + " ms");
+                         mAlarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis()
+                                 + idleMillis, mIdleIntent);
+                     } else {
+                         setDeviceIdleAndUpdateWifi(true);
+                     }
++		} else {
++		    mWifiStateMachine.acquireShutdownLock();
+                 }
+             } else if (action.equals(ACTION_DEVICE_IDLE)) {
+                 setDeviceIdleAndUpdateWifi(true);
+diff --git a/wifi/java/android/net/wifi/WifiStateMachine.java b/wifi/java/android/net/wifi/WifiStateMachine.java
+index dc4d757..a64214e 100644
+--- a/wifi/java/android/net/wifi/WifiStateMachine.java
++++ b/wifi/java/android/net/wifi/WifiStateMachine.java
+@@ -196,6 +196,10 @@ public class WifiStateMachine extends StateMachine {
+ 
+     // Wakelock held during wifi start/stop and driver load/unload
+     private PowerManager.WakeLock mWakeLock;
++    private PowerManager.WakeLock mShutdownLock;
++    private PowerManager.WakeLock mHungLock;
++    private PowerManager.WakeLock mSodLock;
++    private PowerManager mPowerManager;
+ 
+     private Context mContext;
+ 
+@@ -693,10 +697,13 @@ public class WifiStateMachine extends StateMachine {
+ 
+         mScanResultCache = new LruCache<String, ScanResult>(SCAN_RESULT_CACHE_SIZE);
+ 
+-        PowerManager powerManager = (PowerManager)mContext.getSystemService(Context.POWER_SERVICE);
+-        mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG);
++	mPowerManager = (PowerManager)mContext.getSystemService(Context.POWER_SERVICE);
++	mWakeLock = mPowerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG);
++	mShutdownLock = mPowerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "WifiShutdownLock");
++	mHungLock = mPowerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "WifiHungLock");
++	mSodLock = mPowerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "WifiSodLock");
+ 
+-        mSuspendWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "WifiSuspend");
++        mSuspendWakeLock = mPowerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "WifiSuspend");
+         mSuspendWakeLock.setReferenceCounted(false);
+ 
+         addState(mDefaultState);
+@@ -764,6 +771,50 @@ public class WifiStateMachine extends StateMachine {
+                 SCAN_ACTIVE : SCAN_PASSIVE, 0));
+     }
+ 
++	public void acquireShutdownLock() {
++		loge("lin : acquireShutdownLock");
++		if (!mShutdownLock.isHeld())
++			mShutdownLock.acquire();
++	}
++	
++	public void releaseShutdownLock() {
++		loge("lin : releaseShutdownLock");
++		if (mShutdownLock.isHeld())
++			mShutdownLock.release();
++	}
++
++	private void acquireHungLock() {
++		loge("lin : acquireHungLock");
++		if (!mHungLock.isHeld())
++			mHungLock.acquire();
++	}
++	
++	private void releaseHungLock() {
++		loge("lin : releaseHungLock");
++		if (mHungLock.isHeld())
++			mHungLock.release();
++	}
++
++	private void acquireSodLock() {
++		loge("lin : acquireSodLock");
++		if (!mSodLock.isHeld())
++			mSodLock.acquire();
++	}
++	
++	public void releaseSodLock() {
++		loge("lin : releaseSodLock");
++		if (mSodLock.isHeld())
++			mSodLock.release();
++	}
++
++	private boolean isScreenOn() {
++		if (mPowerManager != null) {
++		    return mPowerManager.isScreenOn();
++		}
++        
++		return true;
++	}
++
+     /**
+      * TODO: doc
+      */
+@@ -2041,8 +2092,14 @@ public class WifiStateMachine extends StateMachine {
+                     }
+                     break;
+                 case WifiMonitor.DRIVER_HUNG_EVENT:
+-                    setWifiEnabled(false);
+-                    setWifiEnabled(true);
++		    if (isScreenOn()) {
++			acquireHungLock();
++			setWifiEnabled(false);
++			setWifiEnabled(true);
++			releaseHungLock();
++		    } else {
++			setWifiEnabled(false);
++		    }
+                     break;
+                 case WifiManager.CONNECT_NETWORK:
+                     replyToMessage(message, WifiManager.CONNECT_NETWORK_FAILED,
+@@ -2152,6 +2209,7 @@ public class WifiStateMachine extends StateMachine {
+                     }
+ 
+                     if(mWifiNative.loadDriver()) {
++			if (!isScreenOn()) acquireSodLock();
+                         if (DBG) log("Driver load successful");
+                         sendMessage(CMD_LOAD_DRIVER_SUCCESS);
+                     } else {
+@@ -2276,6 +2334,7 @@ public class WifiStateMachine extends StateMachine {
+                     if (DBG) log(getName() + message.toString() + "\n");
+                     mWakeLock.acquire();
+                     if(mWifiNative.unloadDriver()) {
++			releaseSodLock();
+                         if (DBG) log("Driver unload successful");
+                         sendMessage(CMD_UNLOAD_DRIVER_SUCCESS);
+ 
+@@ -2511,8 +2570,13 @@ public class WifiStateMachine extends StateMachine {
+                     break;
+                 case WifiMonitor.SUP_DISCONNECTION_EVENT:  /* Supplicant connection lost */
+                     loge("Connection lost, restart supplicant");
++                    acquireHungLock();
+                     mWifiNative.killSupplicant(mP2pSupported);
+                     mWifiNative.closeSupplicantConnection();
++                    if (isScreenOn()) {
++                        setWifiEnabled(false);
++                        setWifiEnabled(true);
++                    }  
+                     mNetworkInfo.setIsAvailable(false);
+                     handleNetworkDisconnect();
+                     sendSupplicantConnectionChangedBroadcast(false);
+@@ -2523,6 +2587,7 @@ public class WifiStateMachine extends StateMachine {
+                         transitionTo(mDriverLoadedState);
+                     }
+                     sendMessageDelayed(CMD_START_SUPPLICANT, SUPPLICANT_RESTART_INTERVAL_MSECS);
++                    releaseHungLock();
+                     break;
+                 case WifiMonitor.SCAN_RESULTS_EVENT:
+                     setScanResults(mWifiNative.scanResults());
+@@ -2896,7 +2961,7 @@ public class WifiStateMachine extends StateMachine {
+                         sendMessage(obtainMessage(CMD_DELAYED_STOP_DRIVER, mDelayedStopCounter, 0));
+                     } else {
+                         /* send regular delayed shut down */
+-                        Intent driverStopIntent = new Intent(ACTION_DELAYED_DRIVER_STOP, null);
++                        /*Intent driverStopIntent = new Intent(ACTION_DELAYED_DRIVER_STOP, null);
+                         driverStopIntent.putExtra(DELAYED_STOP_COUNTER, mDelayedStopCounter);
+                         mDriverStopIntent = PendingIntent.getBroadcast(mContext,
+                                 DRIVER_STOP_REQUEST, driverStopIntent,
+@@ -2904,6 +2969,9 @@ public class WifiStateMachine extends StateMachine {
+ 
+                         mAlarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis()
+                                 + mDriverStopDelayMs, mDriverStopIntent);
++                        mAlarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis()
++                                + 0, mDriverStopIntent);*/
++			sendMessage(obtainMessage(CMD_DELAYED_STOP_DRIVER, mDelayedStopCounter, 0));
+                     }
+                     break;
+                 case CMD_START_DRIVER:
+@@ -2929,6 +2997,9 @@ public class WifiStateMachine extends StateMachine {
+                     } else {
+                         transitionTo(mDriverStoppingState);
+                     }
++		    setWifiEnabled(false);
++		    releaseShutdownLock();
++		    releaseSodLock();
+                     break;
+                 case CMD_START_PACKET_FILTERING:
+                     if (message.arg1 == MULTICAST_V6) {
+@@ -3578,7 +3649,7 @@ public class WifiStateMachine extends StateMachine {
+         public void exit() {
+             /* Request a CS wakelock during transition to mobile */
+             checkAndSetConnectivityInstance();
+-            mCm.requestNetworkTransitionWakelock(TAG);
++            //mCm.requestNetworkTransitionWakelock(TAG);
+         }
+     }
+ 
+-- 
+1.8.1.5
+

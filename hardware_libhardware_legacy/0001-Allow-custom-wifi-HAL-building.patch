@@ -1,0 +1,31 @@
+From d6d1173857e7b0207903a681a0fc2a0b6f9d079d Mon Sep 17 00:00:00 2001
+From: Alan Marchesan <justcavalli@gmail.com>
+Date: Sat, 6 Oct 2012 16:57:47 +0200
+Subject: [PATCH] Allow custom wifi HAL building
+
+---
+ wifi/Android.mk | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/wifi/Android.mk b/wifi/Android.mk
+index d9225bd..ef890c7 100644
+--- a/wifi/Android.mk
++++ b/wifi/Android.mk
+@@ -28,7 +28,13 @@ ifdef WIFI_DRIVER_FW_PATH_PARAM
+ LOCAL_CFLAGS += -DWIFI_DRIVER_FW_PATH_PARAM=\"$(WIFI_DRIVER_FW_PATH_PARAM)\"
+ endif
+ 
+-LOCAL_SRC_FILES += wifi/wifi.c
++ifeq ($(TARGET_CUSTOM_WIFI),)
++	LOCAL_SRC_FILES += \
++		wifi/wifi.c
++else
++	LOCAL_SRC_FILES += \
++		$(TARGET_CUSTOM_WIFI)
++endif
+ 
+ ifeq ($(BOARD_HAVE_SAMSUNG_WIFI),true)
+ LOCAL_CFLAGS += -DSAMSUNG_WIFI
+-- 
+1.8.1.5
+

@@ -1,0 +1,36 @@
+From 9544f38f6b4bc6486e99dff828b0c20738517598 Mon Sep 17 00:00:00 2001
+From: Alan Marchesan <justcavalli@gmail.com>
+Date: Sat, 15 Dec 2012 11:53:08 +0100
+Subject: [PATCH] amlogic: exposure compensation is not available
+
+---
+ core/java/android/hardware/Camera.java | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/core/java/android/hardware/Camera.java b/core/java/android/hardware/Camera.java
+index 50aa0b8..47554f4 100644
+--- a/core/java/android/hardware/Camera.java
++++ b/core/java/android/hardware/Camera.java
+@@ -3111,7 +3111,8 @@ public class Camera {
+          *         exposure compensation is not supported.
+          */
+         public int getMaxExposureCompensation() {
+-            return getInt(KEY_MAX_EXPOSURE_COMPENSATION, 0);
++            //return getInt(KEY_MAX_EXPOSURE_COMPENSATION, 0);
++	    return 0;
+         }
+ 
+         /**
+@@ -3122,7 +3123,8 @@ public class Camera {
+          *         exposure compensation is not supported.
+          */
+         public int getMinExposureCompensation() {
+-            return getInt(KEY_MIN_EXPOSURE_COMPENSATION, 0);
++            //return getInt(KEY_MIN_EXPOSURE_COMPENSATION, 0);
++	    return 0;
+         }
+ 
+         /**
+-- 
+1.8.1.5
+

@@ -1,0 +1,38 @@
+From 4e69a5f8b6303098d33023a4a41317a54adec48b Mon Sep 17 00:00:00 2001
+From: Alan Marchesan <justcavalli@gmail.com>
+Date: Tue, 11 Jun 2013 07:06:46 +0200
+Subject: [PATCH] Enable both hardware keys and system bar customization
+
+---
+ src/com/android/settings/cyanogenmod/SystemSettings.java | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/src/com/android/settings/cyanogenmod/SystemSettings.java b/src/com/android/settings/cyanogenmod/SystemSettings.java
+index 0b0d29c..7476b45 100644
+--- a/src/com/android/settings/cyanogenmod/SystemSettings.java
++++ b/src/com/android/settings/cyanogenmod/SystemSettings.java
+@@ -71,10 +71,11 @@ public class SystemSettings extends SettingsPreferenceFragment  implements
+ 
+         // Only show the hardware keys config on a device that does not have a navbar
+         // and the navigation bar config on phones that has a navigation bar
++	// CT: I don't wanna this behavior on a tablet since it may have both.
+         boolean removeKeys = false;
+         boolean removeNavbar = false;
+ 
+-        IWindowManager windowManager = IWindowManager.Stub.asInterface(
++        /*IWindowManager windowManager = IWindowManager.Stub.asInterface(
+                 ServiceManager.getService(Context.WINDOW_SERVICE));
+         try {
+             if (windowManager.hasNavigationBar()) {
+@@ -84,7 +85,7 @@ public class SystemSettings extends SettingsPreferenceFragment  implements
+             }
+         } catch (RemoteException e) {
+             // Do nothing
+-        }
++        }*/
+ 
+         // Determine which user is logged in
+         mIsPrimary = UserHandle.myUserId() == UserHandle.USER_OWNER;
+-- 
+1.8.1.5
+

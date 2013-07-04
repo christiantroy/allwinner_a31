@@ -1,0 +1,42 @@
+From 62d15508eb15bc70a02e39ecf560f288a267c651 Mon Sep 17 00:00:00 2001
+From: Alan Marchesan <justcavalli@gmail.com>
+Date: Thu, 20 Jun 2013 19:20:37 +0200
+Subject: [PATCH] HardwareRenderer.java: sun6i modifications
+
+---
+ core/java/android/view/HardwareRenderer.java | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/core/java/android/view/HardwareRenderer.java b/core/java/android/view/HardwareRenderer.java
+index 5b7a5af..1d15e8e 100644
+--- a/core/java/android/view/HardwareRenderer.java
++++ b/core/java/android/view/HardwareRenderer.java
+@@ -44,6 +44,13 @@ import java.io.File;
+ import java.io.PrintWriter;
+ import java.util.concurrent.locks.ReentrantLock;
+ 
++import android.opengl.GLES20;
++import android.opengl.GLES11Ext;
++import android.opengl.GLSurfaceView;
++import android.opengl.Matrix;
++import javax.microedition.khronos.egl.EGLConfig;
++import javax.microedition.khronos.opengles.GL10;
++
+ import static javax.microedition.khronos.egl.EGL10.*;
+ 
+ /**
+@@ -1222,6 +1229,11 @@ public abstract class HardwareRenderer {
+                                 drawDisplayListStartTime = System.nanoTime();
+                             }
+ 
++			    GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
++			    GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
++			    GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
++			    GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
++
+                             Trace.traceBegin(Trace.TRACE_TAG_VIEW, "drawDisplayList");
+                             try {
+                                 status |= canvas.drawDisplayList(displayList, mRedrawClip,
+-- 
+1.8.1.5
+

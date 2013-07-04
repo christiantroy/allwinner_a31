@@ -1,0 +1,84 @@
+From cf5cf22e6727d2130665ecf897cf91f23f23146d Mon Sep 17 00:00:00 2001
+From: Alan Marchesan <justcavalli@gmail.com>
+Date: Thu, 13 Sep 2012 07:36:06 +0200
+Subject: [PATCH] Send fake deviceID because we don't have a radio
+
+Conflicts:
+
+	telephony/java/android/telephony/TelephonyManager.java
+---
+ .../java/android/telephony/TelephonyManager.java   | 39 +++++++++++++++++++++-
+ 1 file changed, 38 insertions(+), 1 deletion(-)
+
+diff --git a/telephony/java/android/telephony/TelephonyManager.java b/telephony/java/android/telephony/TelephonyManager.java
+index 0e8f528..86c2cb9 100644
+--- a/telephony/java/android/telephony/TelephonyManager.java
++++ b/telephony/java/android/telephony/TelephonyManager.java
+@@ -24,6 +24,7 @@ import android.os.RemoteException;
+ import android.os.ServiceManager;
+ import android.os.SystemProperties;
+ import android.util.Log;
++import android.provider.Settings;
+ 
+ import com.android.internal.telephony.IPhoneSubInfo;
+ import com.android.internal.telephony.ITelephony;
+@@ -192,6 +193,31 @@ public class TelephonyManager {
+         }
+     }
+ 
++     /**
++     * Returns the ANDROID_ID as fake device id
++     */
++    private String getFakeDeviceId(){
++        String id = Settings.Secure.getString(sContext.getContentResolver(), Settings.Secure.ANDROID_ID);
++        if (id != null && id.length() > 0) {
++            StringBuilder strBuilder = new StringBuilder();
++            int offset = 0, radix = 16;
++            long result = 0, length = id.length();
++            while (offset < length) {
++                int digit = Character.digit(id.charAt(offset++), radix);
++                strBuilder.append(digit);
++            }
++
++            String strID = strBuilder.toString();
++            if (strID.length() > 15) {
++                String  IMEI = strID.substring(0, 15);
++                //Log.d(TAG, "getDeviceId android id:" + strID + ", device id:" + IMEI);
++                return IMEI;
++            }
++        }
++        return "012345678901237";
++
++    }
++
+     /**
+      * Returns the unique device ID, for example, the IMEI for GSM and the MEID
+      * or ESN for CDMA phones. Return null if device ID is not available.
+@@ -200,12 +226,23 @@ public class TelephonyManager {
+      *   {@link android.Manifest.permission#READ_PHONE_STATE READ_PHONE_STATE}
+      */
+     public String getDeviceId() {
+-        try {
++        /*try {
+             return getSubscriberInfo().getDeviceId();
+         } catch (RemoteException ex) {
+             return null;
+         } catch (NullPointerException ex) {
+             return null;
++        }*/
++        try {
++            String str = getSubscriberInfo().getDeviceId();
++            if(str != null)
++                return str;
++            else
++                return getFakeDeviceId();
++        } catch (RemoteException ex) {
++            return getFakeDeviceId();
++        } catch (NullPointerException ex) {
++            return getFakeDeviceId();
+         }
+     }
+ 
+-- 
+1.8.1.5
+
